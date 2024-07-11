@@ -29,6 +29,7 @@ import org.junit.rules.Timeout;
 import java.util.*;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 @Category(Proj2Tests.class)
 public class TestLeafNode {
