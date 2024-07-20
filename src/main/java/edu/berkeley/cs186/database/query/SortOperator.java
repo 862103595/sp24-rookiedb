@@ -87,13 +87,19 @@ public class SortOperator extends QueryOperator {
      */
     public Run sortRun(Iterator<Record> records) {
         // TODO(proj3_part1): implement
-        return null;
+        List<Record> temp = new ArrayList<>();
+        while (records.hasNext()) {
+            temp.add(records.next());
+        }
+        Collections.sort(temp, comparator);
+        Run sorted = makeRun(temp);
+        return sorted;
     }
 
     /**
      * Given a list of sorted runs, returns a new run that is the result of
      * merging the input runs. You should use a Priority Queue (java.util.PriorityQueue)
-     * to determine which record should be should be added to the output run
+     * to determine which record  should be added to the output run
      * next.
      *
      * You are NOT allowed to have more than runs.size() records in your
@@ -108,7 +114,24 @@ public class SortOperator extends QueryOperator {
     public Run mergeSortedRuns(List<Run> runs) {
         assert (runs.size() <= this.numBuffers - 1);
         // TODO(proj3_part1): implement
-        return null;
+        RecordPairComparator comparator = new RecordPairComparator();
+        PriorityQueue<Pair<Record, Integer>> quque = new PriorityQueue<>(runs.size(), comparator);
+        Iterator<Record> [] iters = new Iterator[runs.size()];
+        for(int i = 0; i < runs.size(); i++) {
+            iters[i] = runs.get(i).iterator();
+            while(iters[i].hasNext()) {
+                quque.add(new Pair<>(iters[i].next(), i));
+            }
+        }
+        Run sorted = makeRun();
+        while(!quque.isEmpty()) {
+            Pair<Record, Integer> pair = quque.remove();
+            sorted.add(pair.getFirst());
+            if (iters[pair.getSecond()].hasNext()) {
+                quque.add(new Pair<>(iters[pair.getSecond()].next(), pair.getSecond()));
+            }
+        }
+        return sorted;
     }
 
     /**
@@ -133,7 +156,16 @@ public class SortOperator extends QueryOperator {
      */
     public List<Run> mergePass(List<Run> runs) {
         // TODO(proj3_part1): implement
-        return Collections.emptyList();
+        List<List<Run>> chunks = new ArrayList<>();
+        for(int i = 0; i < runs.size(); i+= numBuffers - 1) {
+            int end = Math.min(i + numBuffers - 1, runs.size());
+            chunks.add(runs.subList(i, end));
+        }
+        List<Run> passed = new ArrayList<>();
+        for(List<Run> chunk : chunks) {
+            passed.add(mergeSortedRuns(chunk));
+        }
+        return passed;
     }
 
     /**
@@ -149,7 +181,15 @@ public class SortOperator extends QueryOperator {
         Iterator<Record> sourceIterator = getSource().iterator();
 
         // TODO(proj3_part1): implement
-        return makeRun(); // TODO(proj3_part1): replace this!
+        List<Run> sorted = new ArrayList<>();
+        while (sourceIterator.hasNext()) {
+            BacktrackingIterator<Record> block = getBlockIterator(sourceIterator, getSchema(), numBuffers);
+            sorted.add(sortRun(block));
+        }
+        while (sorted.size() > 1) {
+            sorted = mergePass(sorted);
+        }
+        return sorted.get(0);
     }
 
     /**
