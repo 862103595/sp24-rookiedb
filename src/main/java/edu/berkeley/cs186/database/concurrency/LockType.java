@@ -23,7 +23,22 @@ public enum LockType {
         }
         // TODO(proj4_part1): implement
 
-        return false;
+        switch (a) {
+            case S:
+                return b == S || b == IS  || b == NL;
+            case X:
+                return b == NL;
+            case IS:
+                return b == S || b == IS || b == IX || b == SIX || b == NL;
+            case IX:
+                return b == IS || b == IX || b == NL;
+            case SIX:
+                return b == IS || b == NL;
+            case NL:
+                return true;  // NL is compatible with all lock types
+            default:
+                return false;
+        }
     }
 
     /**
@@ -54,8 +69,20 @@ public enum LockType {
             throw new NullPointerException("null lock type");
         }
         // TODO(proj4_part1): implement
+        switch (parentLockType) {
+            case NL:
+            case X:
+            case S:
+            case SIX:
+                return childLockType == NL;
+            case IS:
+                return childLockType == IS || childLockType == S || childLockType == NL;
+            case IX:
+                return true;
+            default:
+                return false; // For other types like S, X, and NL, there should not be any children locks.
+        }
 
-        return false;
     }
 
     /**
@@ -70,7 +97,24 @@ public enum LockType {
         }
         // TODO(proj4_part1): implement
 
-        return false;
+
+        switch (required) {
+            case X:
+                return substitute == LockType.X;
+            case SIX:
+                return substitute == LockType.X || substitute == LockType.SIX;
+            case IX:
+                return substitute == LockType.X || substitute == LockType.IX || substitute == LockType.SIX;
+            case IS:
+                return substitute == LockType.X || substitute == LockType.IX || substitute == LockType.SIX || substitute == LockType.IS || substitute == LockType.S;
+            case S:
+                return substitute == LockType.X || substitute == LockType.SIX || substitute == LockType.S;
+            case NL:
+                // No lock (NL) can be substituted by any lock type
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**

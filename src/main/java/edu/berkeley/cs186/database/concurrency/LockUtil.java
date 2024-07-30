@@ -40,10 +40,49 @@ public class LockUtil {
         LockContext parentContext = lockContext.parentContext();
         LockType effectiveLockType = lockContext.getEffectiveLockType(transaction);
         LockType explicitLockType = lockContext.getExplicitLockType(transaction);
-
+        if(LockType.substitutable(effectiveLockType, requestType) || requestType.equals(LockType.NL)) {
+            return;
+        }
+        if(effectiveLockType.equals(LockType.IX) && requestType.equals(LockType.S)) {
+            lockContext.promote(transaction, LockType.SIX);
+        }
+        else if(effectiveLockType.equals(LockType.IX)) {
+            lockContext.escalate(transaction);
+        }
+        else if(effectiveLockType.equals(LockType.IS) && requestType.equals(LockType.S)) {
+            lockContext.escalate(transaction);
+        }
+        else if(effectiveLockType.equals(LockType.IS)) {
+            lockContext.escalate(transaction);
+            lockContext.promote(transaction, LockType.X);
+        }
+        else if(effectiveLockType.equals(LockType.SIX) && requestType.equals(LockType.S)) {
+            return;
+        }
+        else if(effectiveLockType.equals(LockType.SIX)) {
+            lockContext.escalate(transaction);
+        }
+        else if(effectiveLockType.equals(LockType.NL)) {
+            ancestorHeld(parentContext, requestType);
+            lockContext.acquire(transaction, requestType);
+        }
+        else if(effectiveLockType.equals(LockType.S) && requestType.equals(LockType.X)) {
+            ancestorHeld(parentContext, requestType);
+            lockContext.promote(transaction, LockType.X);
+        }
         // TODO(proj4_part2): implement
         return;
     }
 
     // TODO(proj4_part2) add any helper methods you want
+    public static void ancestorHeld(LockContext parentContext, LockType requestType) {
+        if(parentContext == null) return;
+        ancestorHeld(parentContext.parentContext(), requestType);
+        if(parentContext.getExplicitLockType(TransactionContext.getTransaction()) == LockType.NL) {
+            parentContext.acquire(TransactionContext.getTransaction(), LockType.parentLock(requestType));
+        }
+        else if(!LockType.substitutable(parentContext.getExplicitLockType(TransactionContext.getTransaction()), LockType.parentLock(requestType))) {
+            parentContext.promote(TransactionContext.getTransaction(), LockType.parentLock(requestType));
+        }
+    }
 }
